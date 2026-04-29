@@ -1,0 +1,12 @@
+# Ignore compiled Java classes
+*.class
+bin/
+
+# Ignore VS Code specific workspace settings
+.vscode/
+
+# Ignore Java crash reports
+hs_err_pid*
+
+# NOTE: We are intentionally NOT ignoring the lib/ folder 
+# because you need those LWJGL and JOML jars to run the game elsewhere!
