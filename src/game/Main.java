@@ -23,7 +23,7 @@ import static org.lwjgl.glfw.GLFW.*;
  * 2. Smooth lane shifting & banking (via Player.update(dt))
  * 3. Dynamic obstacle transforms: tumbling rotation + sine-wave pulsing scale
  * 4. Speed-warp FOV, camera shake, background stars, thicker wireframes
- * 5. Press SPACE to start / restart; full state reset on restart
+ * 5. Press SPACE to start / restart; full state reset on restarts
  */
 public class Main {
 
@@ -75,26 +75,26 @@ public class Main {
 
             // ===== Game State Variables =====
             double lastFrameTime = glfwGetTime();
-            float totalTime = 0.0f;           // Total elapsed time (for sine wave animations)
+            float totalTime = 0.0f; // Total elapsed time (for sine wave animations)
 
-            float speed = 15.0f;               // Units/second (increases over time)
-            float speedIncreaseRate = 0.3f;    // Speed gained per second of survival
-            float initialSpeed = 15.0f;        // Starting speed (for resets)
+            float speed = 15.0f; // Units/second (increases over time)
+            float speedIncreaseRate = 0.3f; // Speed gained per second of survival
+            float initialSpeed = 15.0f; // Starting speed (for resets)
 
             // Obstacle spawning
             List<Obstacle> obstacles = new ArrayList<>();
             Random random = new Random();
-            float spawnTimer    = 0.0f;        // Accumulator for spawn cooldown
-            float spawnInterval = 1.2f;        // Seconds between obstacle spawns
+            float spawnTimer = 0.0f; // Accumulator for spawn cooldown
+            float spawnInterval = 1.2f; // Seconds between obstacle spawns
             float initialSpawnInterval = 1.2f; // For resets
-            float spawnZ        = -40.0f;      // How far down -Z obstacles appear
-            float despawnZ      = 3.0f;        // +Z threshold to remove obstacles
+            float spawnZ = -40.0f; // How far down -Z obstacles appear
+            float despawnZ = 3.0f; // +Z threshold to remove obstacles
             float[] laneXPositions = { -2.0f, 0.0f, 2.0f };
 
             // Score & game state
-            float score           = 0.0f;
-            int obstaclesPassed   = 0;
-            GameState gameState   = GameState.WAITING_TO_START;
+            float score = 0.0f;
+            int obstaclesPassed = 0;
+            GameState gameState = GameState.WAITING_TO_START;
 
             // --- AABB half-extents for collision ---
             // Player pyramid: roughly 0.3 wide, 0.6 tall, 0.3 deep
@@ -114,7 +114,7 @@ public class Main {
             System.out.println("╚══════════════════════════════════════╝");
 
             // ===============================================================
-            //                      THE CORE GAME LOOP
+            // THE CORE GAME LOOP
             // ===============================================================
             while (!window.shouldClose()) {
                 double currentFrameTime = glfwGetTime();
@@ -212,8 +212,8 @@ public class Main {
                             // Player AABB: center at (pp.x, pp.y + halfH, pp.z)
                             // Obstacle AABB: center at (op.x, op.y + obsHalfH, op.z)
                             boolean overlapX = Math.abs(pp.x - op.x) < (playerHalfW + obsHalfW);
-                            boolean overlapY = Math.abs((pp.y + playerHalfH) - (op.y + obsHalfH))
-                                               < (playerHalfH + obsHalfH);
+                            boolean overlapY = Math
+                                    .abs((pp.y + playerHalfH) - (op.y + obsHalfH)) < (playerHalfH + obsHalfH);
                             boolean overlapZ = Math.abs(pp.z - op.z) < (playerHalfD + obsHalfD);
 
                             if (overlapX && overlapY && overlapZ) {
@@ -273,7 +273,7 @@ public class Main {
 
                 // --------- RENDER (always — so the scene is visible in every state) ----------
                 renderer.render(window, shaderProgram, trackTile, player, obstacles, stars,
-                                speed, deltaTime);
+                        speed, deltaTime);
 
                 // Swap buffers and poll events
                 window.update();
