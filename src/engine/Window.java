@@ -85,4 +85,9 @@ public class Window {
     public int getHeight() {
         return height;
     }
+
+    /** Returns the raw GLFW window handle (needed for input polling). */
+    public long getWindowHandle() {
+        return glfwWindow;
+    }
 }
