@@ -18,7 +18,7 @@ import static org.lwjgl.glfw.GLFW.*;
 /**
  * Main.java — Phase 3: Full Polish, UX, and Advanced CG Transformations.
  *
- * New features over Phase 2:
+ * New features over Phase 2::
  * 1. State Machine: WAITING_TO_START → PLAYING → GAME_OVER → (restart) PLAYING
  * 2. Smooth lane shifting & banking (via Player.update(dt))
  * 3. Dynamic obstacle transforms: tumbling rotation + sine-wave pulsing scale
