@@ -36,7 +36,8 @@ import static org.lwjgl.glfw.GLFW.*;
  * New in Phase 4:
  * 10. High Score Persistence — reads/writes highscore.txt
  * 11. Pause Menu — ESC toggles pause during gameplay
- * 12. Invincibility Grace Period — 1.5s of blinking invulnerability on start/restart
+ * 12. Invincibility Grace Period — 1.5s of blinking invulnerability on
+ * start/restart
  * 13. Visual Lane Indicators — faint guide lines at lane positions
  * 14. On-Screen HUD — NanoVG score, best, controls, state overlays
  */
@@ -123,7 +124,7 @@ public class Main {
             HUD hud = new HUD();
             hud.init();
 
-            Obstacle.initMesh(); // One-time shared cube VAO/VBO
+            Obstacle.initMesh(); // One-time shared cube VAO/VBOs
 
             // ===== Game State Variables =====
             double lastFrameTime = glfwGetTime();
@@ -253,7 +254,8 @@ public class Main {
                         // 3. Update invincibility timer & player blink
                         if (invincibilityTimer > 0.0f) {
                             invincibilityTimer -= deltaTime;
-                            if (invincibilityTimer < 0.0f) invincibilityTimer = 0.0f;
+                            if (invincibilityTimer < 0.0f)
+                                invincibilityTimer = 0.0f;
                         }
                         player.updateInvincibility(invincibilityTimer);
 
@@ -297,7 +299,7 @@ public class Main {
                         }
 
                         // 7. AABB Collision Detection (Player vs every Obstacle)
-                        //    Skipped during the invincibility grace period.
+                        // Skipped during the invincibility grace period.
                         if (invincibilityTimer <= 0.0f) {
                             org.joml.Vector3f pp = player.getPosition();
                             for (Obstacle obs : obstacles) {
@@ -323,10 +325,12 @@ public class Main {
 
                                     System.out.println("========================================");
                                     System.out.println("           *** GAME OVER ***");
-                                    System.out.println("  Score (time survived): " + String.format("%.1f", score) + "s");
+                                    System.out
+                                            .println("  Score (time survived): " + String.format("%.1f", score) + "s");
                                     System.out.println("  Obstacles dodged:      " + obstaclesPassed);
                                     System.out.println("  Final speed:           " + String.format("%.1f", speed));
-                                    System.out.println("  Best:                  " + String.format("%.1f", highScore) + "s");
+                                    System.out.println(
+                                            "  Best:                  " + String.format("%.1f", highScore) + "s");
                                     System.out.println("========================================");
                                     System.out.println("  Press SPACE to restart...");
                                     break;
