@@ -91,6 +91,21 @@ public class ShaderProgram {
         glUniform3f(uniforms.get(uniformName), x, y, z);
     }
 
+    // Sends a vec4 value (color with alpha, or any 4-component vector)
+    public void setUniform(String uniformName, float x, float y, float z, float w) {
+        glUniform4f(uniforms.get(uniformName), x, y, z, w);
+    }
+
+    // Sends a single float value
+    public void setUniform(String uniformName, float value) {
+        glUniform1f(uniforms.get(uniformName), value);
+    }
+
+    // Sends a vec2 value (e.g., resolution width/height)
+    public void setUniform(String uniformName, float x, float y) {
+        glUniform2f(uniforms.get(uniformName), x, y);
+    }
+
     // --- State Methods ---
 
     public void bind() {

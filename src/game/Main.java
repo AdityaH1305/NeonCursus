@@ -7,7 +7,11 @@ import objects.Track;
 import objects.Player;
 import objects.Obstacle;
 import objects.Stars;
+import objects.LaneIndicators;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -16,14 +20,25 @@ import java.util.Random;
 import static org.lwjgl.glfw.GLFW.*;
 
 /**
- * Main.java — Phase 3: Full Polish, UX, and Advanced CG Transformations.
+ * Main.java — Phase 4: QOL & HUD.
  *
- * New features over Phase 2::
+ * Features (Phase 3 carried forward):
  * 1. State Machine: WAITING_TO_START → PLAYING → GAME_OVER → (restart) PLAYING
  * 2. Smooth lane shifting & banking (via Player.update(dt))
  * 3. Dynamic obstacle transforms: tumbling rotation + sine-wave pulsing scale
  * 4. Speed-warp FOV, camera shake, background stars, thicker wireframes
- * 5. Press SPACE to start / restart; full state reset on restarts
+ * 5. "Fake Bloom" glow (two-pass rendering in Renderer)
+ * 6. Player speed trails (fading GL_POINTS trail history)
+ * 7. CRT arcade overlay (scanlines + vignette post-process)
+ * 8. Dynamic resolution support (Window framebuffer callback)
+ * 9. Press SPACE to start / restart; full state reset on restarts
+ *
+ * New in Phase 4:
+ * 10. High Score Persistence — reads/writes highscore.txt
+ * 11. Pause Menu — ESC toggles pause during gameplay
+ * 12. Invincibility Grace Period — 1.5s of blinking invulnerability on start/restart
+ * 13. Visual Lane Indicators — faint guide lines at lane positions
+ * 14. On-Screen HUD — NanoVG score, best, controls, state overlays
  */
 public class Main {
 
@@ -32,6 +47,36 @@ public class Main {
         WAITING_TO_START,
         PLAYING,
         GAME_OVER
+    }
+
+    // ===== High Score File =====
+    private static final String HIGH_SCORE_FILE = "highscore.txt";
+
+    /**
+     * Load the high score from file. Returns 0.0 if the file doesn't exist
+     * or contains invalid data.
+     */
+    private static float loadHighScore() {
+        try {
+            if (Files.exists(Paths.get(HIGH_SCORE_FILE))) {
+                String content = Files.readString(Paths.get(HIGH_SCORE_FILE)).trim();
+                return Float.parseFloat(content);
+            }
+        } catch (IOException | NumberFormatException e) {
+            System.out.println("Could not load high score, starting fresh.");
+        }
+        return 0.0f;
+    }
+
+    /**
+     * Save the high score to file.
+     */
+    private static void saveHighScore(float score) {
+        try {
+            Files.writeString(Paths.get(HIGH_SCORE_FILE), String.format("%.1f", score));
+        } catch (IOException e) {
+            System.out.println("Warning: Could not save high score.");
+        }
     }
 
     public static void main(String[] args) {
@@ -43,7 +88,7 @@ public class Main {
             window.init();
             System.out.println("Engine started successfully! Welcome to Neon Cursus.");
 
-            // Setup Shaders
+            // Setup Neon Shaders
             ShaderProgram shaderProgram = new ShaderProgram();
 
             // Read the GLSL files and compile them
@@ -55,11 +100,12 @@ public class Main {
             shaderProgram.createUniform("projection");
             shaderProgram.createUniform("model");
             shaderProgram.createUniform("view");
-            shaderProgram.createUniform("neonColor");
+            shaderProgram.createUniform("neonColor"); // Now vec4 (RGBA) in the shader
             shaderProgram.createUniform("fogColor");
 
             // ===== Setup Renderer, Track, Player, Stars, and Obstacle mesh =====
             Renderer renderer = new Renderer();
+            renderer.initCRT(); // Initialize CRT overlay (shader + full-screen quad)
 
             Track trackTile = new Track();
             trackTile.init();
@@ -70,6 +116,12 @@ public class Main {
 
             Stars stars = new Stars();
             stars.init();
+
+            LaneIndicators laneIndicators = new LaneIndicators();
+            laneIndicators.init();
+
+            HUD hud = new HUD();
+            hud.init();
 
             Obstacle.initMesh(); // One-time shared cube VAO/VBO
 
@@ -96,6 +148,10 @@ public class Main {
             int obstaclesPassed = 0;
             GameState gameState = GameState.WAITING_TO_START;
 
+            // --- High Score ---
+            float highScore = loadHighScore();
+            System.out.println("High score loaded: " + String.format("%.1f", highScore));
+
             // --- AABB half-extents for collision ---
             // Player pyramid: roughly 0.3 wide, 0.6 tall, 0.3 deep
             float playerHalfW = 0.3f, playerHalfH = 0.6f, playerHalfD = 0.3f;
@@ -104,6 +160,14 @@ public class Main {
 
             // --- Input debounce for SPACE ---
             boolean spacePressed = false;
+
+            // --- Pause State ---
+            boolean isPaused = false;
+            boolean escPressed = false;
+
+            // --- Invincibility Grace Period ---
+            float invincibilityTimer = 0.0f;
+            float INVINCIBILITY_DURATION = 1.5f;
 
             // Print welcome message
             System.out.println("╔══════════════════════════════════════╗");
@@ -133,6 +197,7 @@ public class Main {
                         if (glfwGetKey(window.getWindowHandle(), GLFW_KEY_SPACE) == GLFW_PRESS) {
                             if (!spacePressed) {
                                 gameState = GameState.PLAYING;
+                                invincibilityTimer = INVINCIBILITY_DURATION;
                                 System.out.println(">>> GO! <<<");
                             }
                             spacePressed = true;
@@ -157,15 +222,42 @@ public class Main {
                     // STATE: PLAYING — Full gameplay
                     // ==========================================================
                     case PLAYING: {
+                        // --- Pause Toggle (ESC with debounce) ---
+                        if (glfwGetKey(window.getWindowHandle(), GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+                            if (!escPressed) {
+                                isPaused = !isPaused;
+                                if (isPaused) {
+                                    System.out.println("=== PAUSED ===");
+                                } else {
+                                    System.out.println("=== RESUMED ===");
+                                }
+                            }
+                            escPressed = true;
+                        } else {
+                            escPressed = false;
+                        }
+
+                        // When paused, skip all game logic but keep rendering
+                        if (isPaused) {
+                            break;
+                        }
+
                         totalTime += deltaTime;
 
                         // 1. Player input (sets target lane)
                         player.handleInput(window.getWindowHandle());
 
-                        // 2. Smooth player position update (lerp + banking)
+                        // 2. Smooth player position update (lerp + banking + trail recording)
                         player.update(deltaTime);
 
-                        // 3. Move the track towards the camera (+Z) for infinite scroll
+                        // 3. Update invincibility timer & player blink
+                        if (invincibilityTimer > 0.0f) {
+                            invincibilityTimer -= deltaTime;
+                            if (invincibilityTimer < 0.0f) invincibilityTimer = 0.0f;
+                        }
+                        player.updateInvincibility(invincibilityTimer);
+
+                        // 4. Move the track towards the camera (+Z) for infinite scroll
                         org.joml.Vector3f trackPos = trackTile.getPosition();
                         trackPos.z += speed * deltaTime;
                         // Translational loop: snap back by 1 unit for seamless tiling
@@ -174,7 +266,7 @@ public class Main {
                         }
                         trackTile.setPosition(trackPos.x, trackPos.y, trackPos.z);
 
-                        // 4. Spawn obstacles on a timer
+                        // 5. Spawn obstacles on a timer
                         spawnTimer += deltaTime;
                         if (spawnTimer >= spawnInterval) {
                             spawnTimer = 0.0f;
@@ -187,7 +279,7 @@ public class Main {
                             obstacles.add(obs);
                         }
 
-                        // 5. Move obstacles towards the camera, update transforms, & despawn
+                        // 6. Move obstacles towards the camera, update transforms, & despawn
                         Iterator<Obstacle> it = obstacles.iterator();
                         while (it.hasNext()) {
                             Obstacle obs = it.next();
@@ -204,39 +296,50 @@ public class Main {
                             }
                         }
 
-                        // 6. AABB Collision Detection (Player vs every Obstacle)
-                        org.joml.Vector3f pp = player.getPosition();
-                        for (Obstacle obs : obstacles) {
-                            org.joml.Vector3f op = obs.getPosition();
+                        // 7. AABB Collision Detection (Player vs every Obstacle)
+                        //    Skipped during the invincibility grace period.
+                        if (invincibilityTimer <= 0.0f) {
+                            org.joml.Vector3f pp = player.getPosition();
+                            for (Obstacle obs : obstacles) {
+                                org.joml.Vector3f op = obs.getPosition();
 
-                            // Player AABB: center at (pp.x, pp.y + halfH, pp.z)
-                            // Obstacle AABB: center at (op.x, op.y + obsHalfH, op.z)
-                            boolean overlapX = Math.abs(pp.x - op.x) < (playerHalfW + obsHalfW);
-                            boolean overlapY = Math
-                                    .abs((pp.y + playerHalfH) - (op.y + obsHalfH)) < (playerHalfH + obsHalfH);
-                            boolean overlapZ = Math.abs(pp.z - op.z) < (playerHalfD + obsHalfD);
+                                // Player AABB: center at (pp.x, pp.y + halfH, pp.z)
+                                // Obstacle AABB: center at (op.x, op.y + obsHalfH, op.z)
+                                boolean overlapX = Math.abs(pp.x - op.x) < (playerHalfW + obsHalfW);
+                                boolean overlapY = Math
+                                        .abs((pp.y + playerHalfH) - (op.y + obsHalfH)) < (playerHalfH + obsHalfH);
+                                boolean overlapZ = Math.abs(pp.z - op.z) < (playerHalfD + obsHalfD);
 
-                            if (overlapX && overlapY && overlapZ) {
-                                gameState = GameState.GAME_OVER;
-                                renderer.triggerShake(); // Camera shake on crash!
+                                if (overlapX && overlapY && overlapZ) {
+                                    gameState = GameState.GAME_OVER;
+                                    renderer.triggerShake(); // Camera shake on crash!
 
-                                System.out.println("========================================");
-                                System.out.println("           *** GAME OVER ***");
-                                System.out.println("  Score (time survived): " + String.format("%.1f", score) + "s");
-                                System.out.println("  Obstacles dodged:      " + obstaclesPassed);
-                                System.out.println("  Final speed:           " + String.format("%.1f", speed));
-                                System.out.println("========================================");
-                                System.out.println("  Press SPACE to restart...");
-                                break;
+                                    // Update high score if beaten
+                                    if (score > highScore) {
+                                        highScore = score;
+                                        saveHighScore(highScore);
+                                        System.out.println("  ★ NEW HIGH SCORE! ★");
+                                    }
+
+                                    System.out.println("========================================");
+                                    System.out.println("           *** GAME OVER ***");
+                                    System.out.println("  Score (time survived): " + String.format("%.1f", score) + "s");
+                                    System.out.println("  Obstacles dodged:      " + obstaclesPassed);
+                                    System.out.println("  Final speed:           " + String.format("%.1f", speed));
+                                    System.out.println("  Best:                  " + String.format("%.1f", highScore) + "s");
+                                    System.out.println("========================================");
+                                    System.out.println("  Press SPACE to restart...");
+                                    break;
+                                }
                             }
                         }
 
-                        // 7. Increase difficulty over time
+                        // 8. Increase difficulty over time
                         speed += speedIncreaseRate * deltaTime;
                         // Also tighten spawn interval slightly (minimum 0.5s gap)
                         spawnInterval = Math.max(0.5f, spawnInterval - 0.02f * deltaTime);
 
-                        // 8. Update score
+                        // 9. Update score
                         score += deltaTime;
                         break;
                     }
@@ -259,6 +362,8 @@ public class Main {
                                 player.reset();
                                 renderer.reset();
                                 trackTile.setPosition(0.0f, -1.0f, 0.0f);
+                                isPaused = false;
+                                invincibilityTimer = INVINCIBILITY_DURATION;
 
                                 gameState = GameState.PLAYING;
                                 System.out.println(">>> RESTARTED — GO! <<<");
@@ -273,6 +378,7 @@ public class Main {
 
                 // --------- RENDER (always — so the scene is visible in every state) ----------
                 renderer.render(window, shaderProgram, trackTile, player, obstacles, stars,
+                        laneIndicators, hud, gameState, score, highScore, isPaused,
                         speed, deltaTime);
 
                 // Swap buffers and poll events
@@ -283,7 +389,10 @@ public class Main {
             trackTile.cleanup();
             player.cleanup();
             stars.cleanup();
+            laneIndicators.cleanup();
+            hud.cleanup();
             Obstacle.cleanupMesh();
+            renderer.cleanup(); // Clean up CRT overlay resources
 
         } catch (Exception e) {
             e.printStackTrace();
