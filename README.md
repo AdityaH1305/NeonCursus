@@ -1,66 +1,236 @@
 # 🌌 Neon Cursus
 
-A 3D Vaporwave infinite runner built entirely from scratch in Java using **LWJGL 3 (OpenGL 3.3 Core Profile)** and **JOML**. 
+A 3D Vaporwave infinite runner built entirely from scratch in Java using **LWJGL 3 (OpenGL 3.3 Core Profile)** and **JOML**.
 
-Created as a university Computer Graphics lab project, this engine implements raw matrix mathematics, custom GLSL shaders, and core 3D rendering algorithms without relying on commercial game engines like Unity or Unreal.
+Created as a university Computer Graphics lab project, this game demonstrates core computer graphics concepts including transformations, viewing matrices, shaders, collision detection, and infinite rendering loops without relying on commercial engines like Unity or Unreal Engine.
 
-## 🚀 Features & Graphics Concepts
+---
 
-* **The Programmable Graphics Pipeline:** Custom Vertex and Fragment shaders (`.vert` / `.frag`) written in GLSL.
-* **3D Transformations ($T \cdot R \cdot S$):** Dynamic calculation of Model Matrices to handle Translations (moving down the track), Rotations (ship banking and obstacle tumbling), and Scaling (pulsing obstacles to a beat).
-* **The Camera Pipeline:** Custom View and Projection matrices, featuring dynamic FOV expansion ("Warp Speed") and randomized camera shake upon collision.
-* **Infinite Translational Loops:** A memory-efficient scrolling grid that snaps backward by exactly 1.0 unit every frame, creating the illusion of endless movement.
-* **Axis-Aligned Bounding Box (AABB) Collision:** Highly efficient 3D collision detection across the X, Y, and Z axes.
-* **Linear Interpolation (Lerp):** Asymptotic averaging applied to X-coordinates and Z-axis rotations for buttery-smooth lane shifting and ship banking.
-* **Multipass Rendering (Fake Bloom):** Objects are drawn twice per frame using `GL_BLEND` and varying `glLineWidth` to create a glowing neon "halo" around a bright core, bypassing the need for expensive Framebuffer Objects (FBOs).
-* **Frame-Rate Independence (Delta Time):** All movement and physics are decoupled from CPU clock speed.
-* **Arcade Polish:** CRT scanline and vignette post-processing, player speed trails, dynamic window resizing, and a crisp **NanoVG** Heads-Up Display (HUD) with high-score persistence.
+# 🚀 Features & Graphics Concepts
 
-## 🎮 Controls
+## 🎨 Graphics Pipeline
+- Custom **Vertex** and **Fragment Shaders** written in GLSL
+- OpenGL 3.3 Core Profile rendering pipeline
+- Perspective projection and depth testing
 
-* **[ A ] / [ ◀ ]** : Switch to Left Lane
-* **[ D ] / [ ▶ ]** : Switch to Right Lane
-* **[ SPACE ]** : Start Run / Restart after Game Over
-* **[ ESC ]** : Pause / Resume Game
+---
 
-## 🛠️ How to Run the Game
+## 🔄 3D Transformations
+Implementation of:
+- Translation
+- Rotation
+- Scaling
 
-This project is built using raw Java and does not use a build manager like Maven or Gradle. All necessary LWJGL and JOML libraries are bundled in the `lib/` directory.
+using Model Matrices:
 
-### Method 1: Using Visual Studio Code (Recommended)
-1. Ensure you have the **Extension Pack for Java** installed in VS Code.
-2. Open the `NeonCursus` folder in VS Code.
-3. Open `src/game/Main.java`.
-4. Check the "Java Projects" tab in your explorer and ensure all `.jar` files in the `lib/` folder are added to your "Referenced Libraries".
-5. Click the **"Run"** button that appears above the `public static void main(String[] args)` method, or press `F5`. 
+```math
+M = T \cdot R \cdot S
+```
 
-### Method 2: Command Line (Windows)
-If you prefer to compile and run the game manually via the terminal, ensure you have the JDK installed and added to your system PATH.
+Examples:
+- Player lane movement
+- Ship banking/tilting
+- Obstacle rotation
+- Dynamic object scaling
 
-1. Open your terminal and navigate to the root directory of the project.
-2. **Compile the source code** into a `bin` directory:
-   ```bash
-   mkdir bin
-   javac -d bin -cp "lib/*" src/engine/*.java src/objects/*.java src/game/*.java
+---
 
+## 🎥 Camera System
+- Custom View Matrix
+- Perspective Projection Matrix
+- Dynamic camera follow system
+- Speed-based Field of View expansion
 
-   NeonCursus/
-├── lib/                     # LWJGL 3, JOML, and NanoVG jar files
+---
+
+## ♾️ Infinite Runner System
+A reusable scrolling track system creates the illusion of endless movement by continuously repositioning floor segments.
+
+Features:
+- Infinite translational loop
+- Memory-efficient rendering
+- Distance fog/depth cueing
+
+---
+
+## 💥 Collision Detection
+Efficient collision system using:
+- Axis-Aligned Bounding Boxes (AABB)
+
+Collision checks are performed across:
+- X-axis
+- Y-axis
+- Z-axis
+
+---
+
+## 🌈 Vaporwave Visual Style
+- Neon colors
+- Wireframe-style environment
+- Glow effects
+- Retro futuristic aesthetic
+
+---
+
+## ⚡ Frame-Rate Independence
+All movement is calculated using Delta Time to ensure smooth gameplay regardless of frame rate.
+
+---
+
+# 🎮 Gameplay
+
+The player controls a futuristic anti-gravity vehicle moving through a neon-lit track in space.
+
+## Objective
+Avoid incoming obstacles and survive as long as possible while the game speed gradually increases.
+
+---
+
+# 🎮 Controls
+
+| Key | Action |
+|-----|--------|
+| **A / ←** | Move Left |
+| **D / →** | Move Right |
+| **SPACE** | Start / Restart |
+| **ESC** | Pause Game |
+
+---
+
+# 🛠️ Technologies Used
+
+- Java
+- LWJGL 3
+- OpenGL 3.3
+- GLSL
+- JOML (Java OpenGL Math Library)
+
+---
+
+# 📁 Project Structure
+
+```plaintext
+NeonCursus/
+│
+├── lib/
+│   └── # LWJGL and JOML libraries
+│
 ├── resources/
-│   └── shaders/             # Custom GLSL shader files (neon, crt)
+│   └── shaders/
+│       ├── neon.vert
+│       └── neon.frag
+│
 ├── src/
-│   ├── engine/              # Core OpenGL wrapper (Window, ShaderProgram, Utils)
-│   ├── game/                # Game logic (Main loop, Renderer, HUD)
-│   └── objects/             # 3D GameObjects (Player, Obstacle, Track, Stars, LaneIndicators)
-├── .gitignore               
-├── highscore.txt            # Auto-generated save file
-└── README.md                # You are here
+│   ├── engine/
+│   │   ├── Window.java
+│   │   └── ShaderProgram.java
+│   │
+│   ├── game/
+│   │   ├── Main.java
+│   │   ├── Renderer.java
+│   │   └── Camera.java
+│   │
+│   └── objects/
+│       ├── GameObject.java
+│       ├── Player.java
+│       ├── Obstacle.java
+│       └── Track.java
+│
+├── README.md
+└── report/
+    ├── screenshots/
+    └── documentation.pdf
+```
 
-Run the game:
+---
 
-Bash
+# ▶️ How to Run
+
+## Method 1: Visual Studio Code (Recommended)
+
+### Requirements
+- Java JDK 17+
+- Visual Studio Code
+- Extension Pack for Java
+
+### Steps
+1. Clone or download the repository
+2. Open the project folder in VS Code
+3. Add all `.jar` files from `lib/` into Referenced Libraries
+4. Open:
+
+```plaintext
+src/game/Main.java
+```
+
+5. Press `F5`
+
+OR
+
+Click the **Run** button above the `main()` method.
+
+---
+
+## Method 2: Command Line
+
+### Compile
+
+```bash
+mkdir bin
+javac -d bin -cp "lib/*" src/engine/*.java src/game/*.java src/objects/*.java
+```
+
+### Run (Windows)
+
+```bash
 java -cp "bin;lib/*" game.Main
+```
 
+### Run (Mac/Linux)
 
-🎓 Academic Fulfillment
-This project was developed to satisfy the requirements for a Computer Graphics laboratory assignment, specifically demonstrating proficiency in 3D viewing, projections, transformations, depth cueing, and interactive rendering loops.
+```bash
+java -cp "bin:lib/*" game.Main
+```
+
+---
+
+# 🎓 Academic Concepts Demonstrated
+
+This project demonstrates understanding of:
+
+- 3D Viewing Pipeline
+- Projection Matrices
+- Model/View Transformations
+- GLSL Shader Programming
+- Infinite Rendering Techniques
+- Real-Time Rendering
+- Interactive Graphics
+- Collision Detection
+- Depth Cueing and Fog
+- OpenGL Rendering Pipeline
+
+---
+
+# 📸 Screenshots
+
+_Add screenshots here_
+
+---
+
+# 📚 Future Improvements
+
+Possible future additions:
+- Dynamic lighting
+- Bloom post-processing
+- Particle effects
+- Procedural obstacle generation
+- Score system
+- Sound effects
+
+---
+
+# 👨‍💻 Author
+
+Developed as a Computer Graphics Laboratory Project.
+
+---
